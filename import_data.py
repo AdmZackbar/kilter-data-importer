@@ -15,6 +15,27 @@ def load_json(path):
         raise ValueError("JSON root must be an object")
     return data
 
+def open_sqlite(path):
+    if not Path(path).exists():
+        print("DB file does not exist, creating...")
+        Path(path).touch()
+    try:
+        return sqlite3.connect(path)
+    except sqlite3.Error as exc:
+        raise ValueError(f"Failed to open SQLite DB: {path}, {exc}") from exc
+
+def load_schema_if_needed(conn):
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='entry';")
+        results = cursor.fetchall()
+        if not results:
+            print("No tables found in DB, loading schema...")
+            schema_sql = Path("template.sql").read_text(encoding="utf-8")
+            conn.executescript(schema_sql)
+    finally:
+        cursor.close()
+
 def data_to_entries(data):
     entries = []
     for attempt in data["attempts"]:
@@ -143,8 +164,10 @@ def import_json_to_sqlite(json_path, db_path):
     data_map['circuit_has_rig'] = data_to_circuits_has_rigs(data)
     data_map['rig'] = data_to_rigs(data)
     data_map['rig_has_hold'] = data_to_rig_has_holds(data)
-    conn = sqlite3.connect(db_path)
+    conn = open_sqlite(db_path)
     try:
+        # Check if this DB has the expected schema, and if not, load it
+        load_schema_if_needed(conn)
         # Iterate over the map and insert data into the DB
         for table, entries in data_map.items():
             insert_entries_if_empty(conn, table, entries)

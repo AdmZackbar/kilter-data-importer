@@ -130,11 +130,12 @@ def insert_entries(conn, table, entries):
     print(f"Imported {len(entries)} rows into table '{table}'")
 
 def import_json_to_sqlite(json_path, db_path):
+    # Load the JSON data into a dict
     data = load_json(json_path)
     if not data:
         print("No data found in JSON file; nothing to import.")
         return
-
+    # Transform the dict into formatted data
     data_map = {}
     data_map['entry'] = data_to_entries(data)
     data_map['favorite'] = data_to_favorites(data)
@@ -144,12 +145,12 @@ def import_json_to_sqlite(json_path, db_path):
     data_map['rig_has_hold'] = data_to_rig_has_holds(data)
     conn = sqlite3.connect(db_path)
     try:
+        # Iterate over the map and insert data into the DB
         for table, entries in data_map.items():
             insert_entries_if_empty(conn, table, entries)
         conn.commit()
     finally:
         conn.close()
-
 
 def main():
     parser = argparse.ArgumentParser(description="Import JSON records into SQLite table")
@@ -158,7 +159,6 @@ def main():
     args = parser.parse_args()
 
     import_json_to_sqlite(args.json_file, args.sqlite_db)
-
 
 if __name__ == "__main__":
     main()

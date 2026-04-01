@@ -68,13 +68,38 @@ def data_to_circuits(data):
         entries.append(entry)
     return entries
 
-def circuits_to_rigs(data):
+def data_to_circuits_has_rigs(data):
     entries = []
     for circuit in data["circuits"]:
         for rig in circuit["climbs"]:
             entry = {
                 "circuit": circuit["name"],
                 "rig": rig,
+            }
+            entries.append(entry)
+    return entries
+
+def data_to_rigs(data):
+    entries = []
+    for rig in data["climbs"]:
+        entry = {
+            "name": rig["name"],
+            "layout": rig["layout"],
+            "datecreated": rig["created_at"],
+            "isdraft": 1 if rig.get("is_draft", False) else 0,
+        }
+        entries.append(entry)
+    return entries
+
+def data_to_rig_has_holds(data):
+    entries = []
+    for rig in data["climbs"]:
+        for hold in rig["holds"]:
+            entry = {
+                "rig": rig["name"],
+                "x": hold["x"],
+                "y": hold["y"],
+                "role": hold["role"],
             }
             entries.append(entry)
     return entries
@@ -114,7 +139,9 @@ def import_json_to_sqlite(json_path, db_path):
     data_map['entry'] = data_to_entries(data)
     data_map['favorite'] = data_to_favorites(data)
     data_map['circuit'] = data_to_circuits(data)
-    data_map['circuit_has_rig'] = circuits_to_rigs(data)
+    data_map['circuit_has_rig'] = data_to_circuits_has_rigs(data)
+    data_map['rig'] = data_to_rigs(data)
+    data_map['rig_has_hold'] = data_to_rig_has_holds(data)
     conn = sqlite3.connect(db_path)
     try:
         for table, entries in data_map.items():

@@ -1,4 +1,5 @@
 .vscode
 *.json
+*.db
 *.sqlite
 *.sqbpro

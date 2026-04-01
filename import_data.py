@@ -56,7 +56,21 @@ def data_to_favorites(data):
         favorites.append(favorite)
     return favorites
 
+def insert_entries_if_empty(conn, table, entries):
+    cursor = conn.cursor()
+    try:
+        sql = f"SELECT 1 FROM \"{table}\" LIMIT 1;"
+        cursor.execute(sql)
+        results = cursor.fetchall()
+        if not results:
+            insert_entries(conn, table, entries)
+        else:
+            print(f"Data exists for table '{table}', skipping...")
+    finally:
+        cursor.close()
+
 def insert_entries(conn, table, entries):
+    print(f"Inserting data into table '{table}'...")
     columns = list(entries[0].keys())
     col_expr = ", ".join(columns)
     placeholders = ", ".join(["?" for _ in columns])
@@ -65,31 +79,33 @@ def insert_entries(conn, table, entries):
     for entry in entries:
         values.append([entry.get(c) for c in columns])
     conn.executemany(sql, values)
+    print(f"Imported {len(entries)} rows into table '{table}'")
 
-def import_json_to_sqlite(data_type, json_path, db_path):
+def import_json_to_sqlite(json_path, db_path):
     data = load_json(json_path)
     if not data:
         print("No data found in JSON file; nothing to import.")
         return
 
-    entries = data_to_entries(data) if data_type == "entry" else data_to_favorites(data)
+    data_map = {}
+    data_map['entry'] = data_to_entries(data)
+    data_map['favorite'] = data_to_favorites(data)
     conn = sqlite3.connect(db_path)
     try:
-        insert_entries(conn, data_type, entries)
+        for table, entries in data_map.items():
+            insert_entries_if_empty(conn, table, entries)
         conn.commit()
-        print(f"Imported {len(entries)} rows into {db_path} table '{data_type}'")
     finally:
         conn.close()
 
 
 def main():
     parser = argparse.ArgumentParser(description="Import JSON records into SQLite table")
-    parser.add_argument("data_type", help="Type of date to parse and import")
     parser.add_argument("json_file", help="Input JSON file path")
     parser.add_argument("sqlite_db", help="SQLite DB path")
     args = parser.parse_args()
 
-    import_json_to_sqlite(args.data_type, args.json_file, args.sqlite_db)
+    import_json_to_sqlite(args.json_file, args.sqlite_db)
 
 
 if __name__ == "__main__":

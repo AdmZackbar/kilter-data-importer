@@ -56,6 +56,29 @@ def data_to_favorites(data):
         favorites.append(favorite)
     return favorites
 
+def data_to_circuits(data):
+    entries = []
+    for circuit in data["circuits"]:
+        entry = {
+            "name": circuit["name"],
+            "color": f"x{circuit["color"]}",
+            "datecreated": circuit["created_at"],
+            "description": circuit.get("description", None),
+        }
+        entries.append(entry)
+    return entries
+
+def circuits_to_rigs(data):
+    entries = []
+    for circuit in data["circuits"]:
+        for rig in circuit["climbs"]:
+            entry = {
+                "circuit": circuit["name"],
+                "rig": rig,
+            }
+            entries.append(entry)
+    return entries
+
 def insert_entries_if_empty(conn, table, entries):
     cursor = conn.cursor()
     try:
@@ -90,6 +113,8 @@ def import_json_to_sqlite(json_path, db_path):
     data_map = {}
     data_map['entry'] = data_to_entries(data)
     data_map['favorite'] = data_to_favorites(data)
+    data_map['circuit'] = data_to_circuits(data)
+    data_map['circuit_has_rig'] = circuits_to_rigs(data)
     conn = sqlite3.connect(db_path)
     try:
         for table, entries in data_map.items():
